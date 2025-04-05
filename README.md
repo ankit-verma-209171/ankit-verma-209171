@@ -19,4 +19,4 @@ I'm a **Software Engineer @ Simform**, passionate about building high-performanc
 - 💬 **Ask me about**: **Android, Kotlin, Jetpack Compose, AI-driven development.**  
 - 📫 **How to reach me**: [Email](mailto:ankitverma209171@gmail.com) | [LinkedIn](https://www.linkedin.com/in/ankit-verma-209171)  
 - 😄 **Pronouns**: He/Him  
-- ⚡ **Fun fact**: When I’m not coding, you’ll probably find me solving **[LeetCode](https://leetcode.com/ankit-verma-209171) problems 🧩**, exploring new tech stacks, or diving into **open-source projects**. Let’s connect and talk tech!  
+- ⚡ **Fun fact**: When I’m not building stuff, you’ll probably find me solving **[LeetCode](https://leetcode.com/ankit-verma-209171) problems 🧩**, exploring new tech stacks, or diving into **open-source projects**. Let’s connect and talk tech!  
