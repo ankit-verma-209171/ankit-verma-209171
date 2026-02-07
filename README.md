@@ -1,22 +1,21 @@
-# Hi there, I'm Ankit Verma! 👋  
-🚀 **Software Engineer | Android | Kotlin | Jetpack Compose | AI Enthusiast**  
+# Hey, I’m Ankit 👋  
 
-## 🔥 About Me  
+I’m a Mobile Software Engineer who enjoys building things that feel solid — apps that don’t just work, but keep working well as they grow.
 
-I'm a **Software Engineer @ Simform**, passionate about building high-performance Android applications and scalable web solutions. With expertise in **Kotlin, Jetpack Compose, Hilt, and modern Android architecture**, I thrive on creating seamless user experiences.  
+Most of my work revolves around **Android development** using Kotlin and Jetpack Compose, where I focus a lot on clean architecture, performance, and long-term maintainability. I like owning features end-to-end — understanding the problem, shaping the solution, and then tuning it once real users start interacting with it.
 
-### 🛠 Tech & Expertise  
+I’ve also spent time working on **iOS codebases** (Swift / SwiftUI), usually in situations where things weren’t behaving as expected — memory issues, data inconsistencies, or tricky media-related bugs. I enjoy that kind of debugging work because it forces you to really understand how systems behave under the hood.
 
-- **Android Development:** Multi-module architectures, dependency injection (**Hilt**), efficient data handling (**Paging 3**), and real-time performance optimizations.  
-- **AI Enthusiast:** Built **Lumina AI**, an AI-powered coding assistant that analyzes undocumented codebases, assists in feature development, and automates testing & documentation. Passionate about integrating AI into development workflows to enhance productivity.  
-- **Web & Backend:** Experience with **Next.js, TypeScript, Django, Flask**, and databases like **Postgres, MySQL, MongoDB**.  
-- **Open-Source Contributor & Problem Solver:** Active on **GitHub & LeetCode**, always exploring new tech stacks.  
+I tend to approach problems in a calm, pragmatic way, paying attention to details while staying conscious of timelines and trade-offs. I like collaborating closely with product and design, asking questions early, and avoiding surprises late in the cycle.
 
-## 🚀 What I'm Up To  
+I’m especially interested in performance tuning, memory usage, lifecycle-related issues, and the small details that make an app feel dependable over time.
 
-- 🔭 **Currently working on**: **Lumina AI**, an AI-powered coding assistant leveraging **Gemini AI** to analyze codebases, assist with feature development, code updates, testing, and documentation.  
-- 🌱 **Currently learning**: **Rust**, exploring its performance benefits and safety features.  
-- 💬 **Ask me about**: **Android, Kotlin, Jetpack Compose, AI-driven development.**  
-- 📫 **How to reach me**: [Email](mailto:ankitverma209171@gmail.com) | [LinkedIn](https://www.linkedin.com/in/ankit-verma-209171)  
-- 😄 **Pronouns**: He/Him  
-- ⚡ **Fun fact**: When I’m not building stuff, you’ll probably find me solving **[LeetCode](https://leetcode.com/ankit-verma-209171) problems 🧩**, exploring new tech stacks, or diving into **open-source projects**. Let’s connect and talk tech!  
+You’ll find a lot of mobile-related work here, along with side projects and experiments in other languages driven by curiosity and problem-solving.
+
+## Let’s connect
+
+- 📧 Email: [ankitverma209171@gmail.com](mailto:ankitverma209171@gmail.com)  
+- 💼 LinkedIn: https://www.linkedin.com/in/ankit-verma-209171  
+- 🧩 LeetCode: https://leetcode.com/ankit-verma-209171  
+
+Thanks for stopping by 🙂
