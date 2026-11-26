@@ -10,8 +10,8 @@ Throw me at anything: a new platform, a legacy codebase, a bug nobody can pin do
 - **From scratch to MVP.** A health-scanning Android app in two months, with real-time camera scanning and on-device ML.
 - **Migrations and clean-ups.** 500+ issues resolved, solo, to bring a legacy browser to Android 15, and 70+ fixes in two months to bring another app level with its iOS version.
 - **Both platforms.** Kotlin and Compose day to day, plus production iOS work in Swift, SwiftUI and UIKit.
-- **Testing and performance.** Introduced unit tests on a production app (500+ written, 800+ updated) and put them in the PR pipeline. Cut startup from about 1 s to 0.4 s with Baseline Profiles.
-- **Working across teams.** I line up Product, Design, Backend and iOS before we build, and I'm mentoring a new teammate.
+- **Testing and performance.** Introduced unit tests on a production app (500+ written, 800+ updated) and put them in the PR pipeline. In my own app, Baseline Profiles cut startup from about 1 s to 0.4 s.
+- **Working across teams.** I get Product, Design, Backend and iOS aligned before we build, and I'm mentoring a new teammate.
 
 ### How I work with AI
 
@@ -21,7 +21,7 @@ Claude Code, Codex and Copilot are part of my daily work. This is the loop I run
 
 - **Features, start to finish.** Agents do much of the writing; I own the plan, the context and the review.
 - **The setup around them.** Skills, rules, MCP servers, hooks and guardrails, tuned to the codebase. I build on Matt Pocock's skills and pstack.
-- **Migrations.** A full app redesign, carried through the codebase with agents.
+- **Redesign.** A full app redesign, carried through the codebase with agents.
 - **Sessions.** I've run sessions on AI-native engineering: the change in mindset, and running work in parallel.
 
 ### Problems I've worked through
@@ -29,7 +29,7 @@ Claude Code, Codex and Copilot are part of my daily work. This is the loop I run
 <details open>
 <summary><b>A legacy Mozilla-based browser had to run on Android 15</b>, with me as the only developer</summary>
 
-- **The work:** followed Mozilla's libraries through their moves and renames, replaced the ones that had broken, and recompiled an unmaintained native library for 16 KB pages, all without changing how the app behaved for users.
+- **The work:** followed Mozilla's libraries through their moves and renames, replaced the ones that had broken, and recompiled an unmaintained native library for 16 KB pages, without changing the behaviour those libraries gave the app.
 - **Result:** 500+ issues resolved, and the app running on Android 15.
 
 </details>
@@ -54,7 +54,7 @@ Claude Code, Codex and Copilot are part of my daily work. This is the loop I run
 <summary><b>Deferred deep links worked on one phone but not another</b> (Android)</summary>
 
 - **Cause:** the device and the app interpreted the user agent differently.
-- **Fix:** tracked the mismatch down together with the backend team.
+- **Outcome:** tracked the mismatch down together with the backend team.
 
 </details>
 
