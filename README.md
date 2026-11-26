@@ -8,7 +8,7 @@ Throw me at anything: a new platform, a legacy codebase, a bug nobody can pin do
 
 - **Owning a codebase.** When a teammate left, I stepped up to own a production Android codebase on a two-person team, handling both maintenance and new features. Teammates come to me when they're stuck on something technical.
 - **From scratch to MVP.** I built a health-scanning Android app from scratch in two months: Jetpack Compose, real-time camera scanning with CameraX, and on-device ML with TensorFlow Lite. On another product, I was part of a 30-day push that took an MVP to the Play Store on deadline.
-- **Migrations and clean-ups.** As the only developer, I brought a large legacy browser up to Android 15 and 16 KB page sizes, resolving 500+ issues (the story is below). On a View-based social app for anime fans, I fixed 70+ issues in two months across stories, reels and AI chat, bringing it level with its iOS version.
+- **Migrations and clean-ups.** As the only developer, I brought a large legacy privacy browser up to Android 15 and 16 KB page sizes, resolving 500+ issues (the story is below). On a View-based social app for anime fans, I fixed 70+ issues in two months across stories, reels and AI chat, bringing it level with its iOS version while helping build new features.
 - **Both platforms.** Kotlin and Compose day to day, plus production iOS work in Swift, SwiftUI and UIKit, including migrating complex UIKit table and collection screens to SwiftUI.
 - **Testing and performance.** I introduced unit testing on a production app: wrote 500+ tests, updated 800+, and added them to the PR pipeline, where they guarded against regressions during large upgrades. In my own app, Baseline Profiles cut startup from about 1 s to 0.4 s.
 - **Working across teams.** I get Product, Design, Backend and iOS aligned on missing user journeys and edge cases before development starts, so there's less rework. I'm mentoring a new teammate, and I've run sessions on AI on iOS and AR on Android.
@@ -28,7 +28,7 @@ Claude Code, Codex and Copilot are part of my daily work. This is the loop I run
 ### Problems I've worked through
 
 <details open>
-<summary><b>A legacy Mozilla-based browser had to run on Android 15</b>, and I was the only developer on it</summary>
+<summary><b>A legacy Mozilla-based privacy browser had to run on Android 15</b>, and I was the only developer on it</summary>
 
 - **Starting point:** a very large, outdated codebase built on Mozilla's Android libraries, with a Redux-style architecture and a mix of Views and Compose.
 - **What it took:**
@@ -36,6 +36,7 @@ Claude Code, Codex and Copilot are part of my daily work. This is the loop I run
   - mapping Mozilla libraries and plugins that had broken or been removed to their newer replacements, along with the namespace, resource and string moves that came with them
   - porting the app to the upstream changes it needed to run on Android 15
   - recompiling an unmaintained third-party native library for 16 KB page sizes
+  - improving the proxy handling, and the experience of switching between normal and proxy modes
 - **The constraint:** modernise all of it without changing the default behaviour users got from those libraries.
 - **Result:** 500+ issues resolved, and the app running on Android 15 with 16 KB page support.
 
