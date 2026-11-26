@@ -27,15 +27,15 @@
 <summary><b>Recorded audio and video arrived corrupted or cut short</b> on unreliable networks (iOS)</summary>
 
 - **Cause:** problems in three places: the recording configuration, the upload handling, and mismatched encoding.
-- **Fix:** corrected all three, so uploads arrive intact even on unreliable networks.
+- **Fix:** corrected all three, which resolved the corruption and made uploads more reliable.
 
 </details>
 
 <details>
-<summary><b>Real-time camera scanning lost stability</b> while the on-device ML pipeline ran (Android)</summary>
+<summary><b>Real-time camera scanning hit performance and memory bottlenecks</b> in the on-device ML pipeline (Android)</summary>
 
 - **Cause:** performance and memory bottlenecks in the CameraX + TensorFlow Lite pipeline: object lifecycles and unnecessary intermediate computations.
-- **Fix:** optimised the object lifecycles and removed those computations, which made real-time scanning stable.
+- **Fix:** optimised the object lifecycles and removed those computations, which improved runtime stability during real-time scanning.
 
 </details>
 
@@ -50,7 +50,7 @@
 <details>
 <summary><b>App Links stopped verifying</b> during a domain migration (Android)</summary>
 
-- **Cause:** the move to a new domain broke Android's App Links verification, so links stopped opening in the app.
+- **Cause:** Android's App Links verification failed after the move to a new domain.
 - **Fix:** traced it to the root cause, documented it, and worked with the relevant teams to put the fix in place.
 
 </details>
