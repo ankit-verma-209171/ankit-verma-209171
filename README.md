@@ -2,15 +2,15 @@
 
 <picture><source media="(prefers-color-scheme: dark)" srcset="assets/hero-dark.svg"><img src="assets/hero-light.svg" alt="Ankit Verma. Android and iOS engineer who owns apps end to end and keeps them fast and stable as they grow. Orbiting: Android, iOS, Performance, On-device ML, AR &amp; spatial, AI tooling." width="100%"></picture>
 
-**I'm a mobile engineer who ships on both Android and iOS, and I do my best work where an app has to hold up in the real world:** on slow networks, through long sessions, and as features pile up. I've been doing this at [Simform](https://www.simform.com/) since 2023, where I now own a production Android codebase end to end.
+**I'm a mobile engineer who ships on both Android and iOS, and I do my best work where an app has to hold up in the real world:** on slow networks, through long sessions, and as features pile up. I've been doing this at [Simform](https://www.simform.com/) since 2023.
 
 ### What I bring to a team
 
-- **Ownership of a whole app.** I own a production Android codebase end to end, both maintenance and new features, and I'm the person the team comes to when something is stuck.
+- **Ownership of a whole app.** I own a production Android codebase end to end, keeping it healthy while shipping what's next, and I'm the person the team comes to when something is stuck.
 - **Zero to MVP, fast.** I built a health-scanning Android app from scratch in two months: Jetpack Compose, real-time camera scanning with CameraX, and on-device ML with TensorFlow Lite. On another product, I was part of a 30-day push that took an MVP to the Play Store on deadline.
 - **The migrations and clean-ups nobody wants.** As the solo developer, I brought a legacy Android app up to Android 15 and 16 KB page sizes, resolving 500+ issues. On another app, I fixed 70+ issues in two months to bring it level with its iOS version.
 - **One engineer, both platforms.** Kotlin and Compose day to day, plus production iOS work in Swift, SwiftUI and UIKit, including migrating complex UIKit table and collection screens to SwiftUI.
-- **Quality you can measure.** I introduced unit testing on a production app: wrote 500+ tests, updated 800+, and added them to the PR pipeline, so large upgrades no longer broke things unnoticed. In my own app, Baseline Profiles cut startup from about 1 s to 0.4 s.
+- **Quality you can measure.** I introduced unit testing on a production app: wrote 500+ tests, updated 800+, and added them to the PR pipeline, where they guarded against regressions during large upgrades. In my own app, Baseline Profiles cut startup from about 1 s to 0.4 s.
 - **A multiplier for the team.** I get Product, Design, Backend and iOS aligned on missing user journeys and edge cases before development starts, so there's less rework. I'm mentoring a new teammate, and I've run sessions on AI-assisted engineering, AI on iOS, and AR on Android.
 
 ### Proof: bugs I've tracked down
@@ -18,24 +18,24 @@
 <details open>
 <summary><b>An iOS app crashed and lost data</b> when users switched between several forms</summary>
 
-- **Cause:** strong reference cycles in table view cells kept every visited form alive in memory, and image loading held on to more than it needed.
-- **Fix:** broke the cycles and corrected how images load and release, found with Xcode Instruments. The crash and the data loss it caused stopped.
+- **Cause:** strong reference cycles in table view cells, plus incorrect image-loading behaviour.
+- **Fix:** broke the reference cycles and corrected the image loading, diagnosed with Xcode Instruments. That ended the crash and the data loss it caused.
 
 </details>
 
 <details>
-<summary><b>Video uploads arrived truncated or corrupted</b> on poor networks (iOS)</summary>
+<summary><b>Recorded audio and video arrived corrupted or cut short</b> on unreliable networks (iOS)</summary>
 
-- **Cause:** recording configuration and encoding didn't match, and uploads weren't handled safely when the connection dropped.
-- **Fix:** corrected the recording setup, encoding and upload handling, so media arrives intact on bad connections.
+- **Cause:** problems in three places: the recording configuration, the upload handling, and mismatched encoding.
+- **Fix:** corrected all three, so uploads arrive intact even on unreliable networks.
 
 </details>
 
 <details>
 <summary><b>Real-time camera scanning lost stability</b> while the on-device ML pipeline ran (Android)</summary>
 
-- **Cause:** objects in the CameraX + TensorFlow Lite frame pipeline lived too long, and each frame did work it didn't need.
-- **Fix:** tightened object lifecycles and removed the unnecessary computation, so scanning stayed stable in real time.
+- **Cause:** performance and memory bottlenecks in the CameraX + TensorFlow Lite pipeline: object lifecycles and unnecessary intermediate computations.
+- **Fix:** optimised the object lifecycles and removed those computations, which made real-time scanning stable.
 
 </details>
 
