@@ -18,25 +18,22 @@ ROOT = Path(__file__).resolve().parent.parent
 ASSETS = ROOT / "assets"
 FONT_DIR = Path(__file__).resolve().parent / "fonts"
 FALLBACK = "-apple-system,'Segoe UI',Roboto,Helvetica,Arial,sans-serif"
-W = 840
 
-LIGHT = dict(
-    surface="#F6EBE4", surface2="#EDDDD4", ink="#231A16", muted="#6E5D55",
-    primary="#A23F16", on_primary="#FFFFFF", pc="#FFDBCF", on_pc="#3A0B00",
-    sc="#E2DFFF", on_sc="#1B1653", sec="#5A55A8",
-    tc="#BFF0DA", on_tc="#00382A", ter="#1C6B55",
-    yc="#FFE08A", on_yc="#3A2E00", yel="#8A6B00",
-)
-DARK = dict(
-    surface="#231C18", surface2="#30261F", ink="#F0DFD8", muted="#B9A79F",
-    primary="#FFB59B", on_primary="#5C1900", pc="#7F2B06", on_pc="#FFDBCF",
-    sc="#3B3779", on_sc="#E2DFFF", sec="#C3C0FF",
-    tc="#0E5140", on_tc="#BFF0DA", ter="#8FD5BD",
-    yc="#574500", on_yc="#FFE08A", yel="#E9C349",
-)
-THEMES = {"light": LIGHT, "dark": DARK}
-# (container, on-container, accent) triples used to give each card its own tone.
-TONES = [("pc", "on_pc", "primary"), ("sc", "on_sc", "sec"), ("tc", "on_tc", "ter"), ("yc", "on_yc", "yel")]
+THEMES = {
+    "light": dict(
+        ink="#231A16", muted="#6E5D55", primary="#A23F16", on_primary="#FFFFFF",
+        sec="#5A55A8", ter="#1C6B55", yel="#8A6B00",
+        glass_ink="#1C1B22", tint="#FFFFFF", sheen=0.45, card_frost=0.55,
+        base=("#FFE3D6", "#E4E0FF"), blobs=["#FF8A65", "#7C6CFF", "#3FD1A8", "#FFC23D", "#FF6FAE"],
+    ),
+    "dark": dict(
+        ink="#F0DFD8", muted="#B9A79F", primary="#FFB59B", on_primary="#5C1900",
+        sec="#C3C0FF", ter="#8FD5BD", yel="#E9C349",
+        glass_ink="#FFFFFF", tint="#0B0B14", sheen=0.22, card_frost=0.45,
+        base=("#24122E", "#0E1B33"), blobs=["#D9481C", "#5B4BDB", "#0F9D7A", "#C79100", "#C2367A"],
+    ),
+}
+GLASS_TINT = 0.28
 
 
 class Font:
@@ -93,15 +90,16 @@ def wrap(s, font, size, max_w):
 
 
 class Svg:
-    def __init__(self, w, h, label):
-        self.w, self.h, self.label = w, h, label
+    # `prefix` keeps generated ids and animation names unique when one canvas is built inside another.
+    def __init__(self, w, h, label, prefix=""):
+        self.w, self.h, self.label, self.prefix = w, h, label, prefix
         self.parts, self.defs, self.css = [], [], []
         self.used = {k: set() for k in FONTS}
         self._ids = 0
 
-    def uid(self, prefix):
+    def uid(self, kind):
         self._ids += 1
-        return f"{prefix}{self._ids}"
+        return f"{self.prefix}{kind}{self._ids}"
 
     def text(self, x, y, s, font, size, fill, anchor="start", spacing=0.0, opacity=1.0, max_w=None):
         if max_w is not None:
@@ -146,26 +144,13 @@ def polar(cx, cy, r, fn):
     return "M" + " L".join(pts) + " Z"
 
 
-def cookie(k, depth):
-    return lambda t: 1 + depth * math.cos(k * t)
-
-
-def squircle(p=4.0):
-    return lambda t: (abs(math.cos(t)) ** p + abs(math.sin(t)) ** p) ** (-1 / p) * 0.92
-
-
-def clover(k=4):
-    return lambda t: 0.78 + 0.22 * abs(math.cos(k * t / 2)) ** 0.6
-
-
 SHAPES = {
-    "cookie9": cookie(9, 0.07),
-    "cookie12": cookie(12, 0.05),
-    "cookie4": cookie(4, 0.12),
-    "flower": cookie(6, 0.16),
-    "squircle": squircle(),
-    "clover": clover(4),
-    "circle": lambda t: 0.95,
+    "cookie9": lambda t: 1 + 0.07 * math.cos(9 * t),
+    "cookie12": lambda t: 1 + 0.05 * math.cos(12 * t),
+    "cookie4": lambda t: 1 + 0.12 * math.cos(4 * t),
+    "flower": lambda t: 1 + 0.16 * math.cos(6 * t),
+    "squircle": lambda t: (abs(math.cos(t)) ** 4 + abs(math.sin(t)) ** 4) ** -0.25 * 0.92,
+    "clover": lambda t: 0.78 + 0.22 * abs(math.cos(2 * t)) ** 0.6,
 }
 
 
@@ -193,357 +178,226 @@ def shape(svg, cx, cy, r, name, fill, opacity=1.0, morph=None, spin=None):
     svg.add(f'<g{cls}><path d="{d}" fill="{fill}"{op}>{anim}</path></g>')
 
 
-def tile(svg, x, y, w, h, fill, r=28):
-    cid = svg.uid("clip")
+# ---- Liquid Glass: frosted copies of the wallpaper, clipped to each panel, with a tint, sheen and rim light.
+
+def glass_defs(svg, p):
+    svg.defs.append(
+        '<filter id="frost" x="-10%" y="-10%" width="120%" height="120%">'
+        '<feGaussianBlur stdDeviation="9"/><feColorMatrix type="saturate" values="1.5"/></filter>'
+        '<filter id="gshadow" x="-30%" y="-30%" width="160%" height="160%"><feGaussianBlur stdDeviation="7"/></filter>'
+        '<linearGradient id="rim" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#fff" stop-opacity=".95"/>'
+        '<stop offset=".45" stop-color="#fff" stop-opacity=".12"/><stop offset="1" stop-color="#fff" stop-opacity=".6"/></linearGradient>'
+        f'<linearGradient id="sheen" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff" stop-opacity="{p["sheen"]}"/>'
+        '<stop offset=".5" stop-color="#fff" stop-opacity="0"/></linearGradient>'
+    )
+
+
+def glass(svg, x, y, w, h, r, src, p, frost=0.0):
+    cid = svg.uid("gc")
     svg.defs.append(f'<clipPath id="{cid}"><rect x="{x}" y="{y}" width="{w}" height="{h}" rx="{r}"/></clipPath>')
-    svg.add(f'<rect x="{x}" y="{y}" width="{w}" height="{h}" rx="{r}" fill="{fill}"/>')
-    return cid
+    svg.add(f'<rect x="{x}" y="{y + 6}" width="{w}" height="{h}" rx="{r}" fill="#000" opacity=".16" filter="url(#gshadow)"/>')
+    svg.add(f'<g clip-path="url(#{cid})"><use href="#{src}" filter="url(#frost)"/>'
+            f'<rect x="{x}" y="{y}" width="{w}" height="{h}" fill="{p["tint"]}" opacity="{GLASS_TINT + frost:.2f}"/>'
+            f'<rect x="{x}" y="{y}" width="{w}" height="{h}" fill="url(#sheen)"/></g>')
+    svg.add(f'<rect x="{x + .6}" y="{y + .6}" width="{w - 1.2}" height="{h - 1.2}" rx="{r}" fill="none" stroke="url(#rim)" stroke-width="1.3"/>')
 
 
-def clipped(svg, cid, draw):
-    svg.add(f'<g clip-path="url(#{cid})">')
-    draw()
-    svg.add("</g>")
+def wallpaper(svg, wid, x, y, w, h, r, p, seed):
+    gid, cid = svg.uid("wg"), svg.uid("wc")
+    svg.defs.append(
+        f'<linearGradient id="{gid}" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="{p["base"][0]}"/>'
+        f'<stop offset="1" stop-color="{p["base"][1]}"/></linearGradient>'
+        '<filter id="soft" x="-40%" y="-40%" width="180%" height="180%"><feGaussianBlur stdDeviation="6"/></filter>'
+        f'<clipPath id="{cid}"><rect x="{x}" y="{y}" width="{w}" height="{h}" rx="{r}"/></clipPath>'
+    )
+    blobs = Svg(1, 1, "", prefix=f"{wid}-")
+    spots = [(.18, .22, .34, "cookie9", "flower"), (.85, .18, .30, "flower", "squircle"),
+             (.70, .62, .40, "squircle", "cookie4"), (.12, .80, .32, "clover", "cookie9"),
+             (.48, .40, .22, "cookie12", "clover")]
+    for i, (fx, fy, fr, shp, morph) in enumerate(spots):
+        shape(blobs, x + w * fx, y + h * fy, min(w, h) * fr, shp, p["blobs"][(i + seed) % 5],
+              morph=[morph], spin=(50 + i * 7) * (-1) ** i)
+    svg.css.extend(blobs.css)
+    svg.defs.append(f'<g id="{wid}"><rect x="{x}" y="{y}" width="{w}" height="{h}" rx="{r}" fill="url(#{gid})"/>'
+                    f'<g filter="url(#soft)">{"".join(blobs.parts)}</g></g>')
+    svg.add(f'<g clip-path="url(#{cid})"><use href="#{wid}"/></g>')
 
 
-def chip(svg, x, y, label, fill, ink, size=12, pad=12, h=26):
-    w = FONTS["bold"].width(label, size, 0.4) + pad * 2
-    svg.add(f'<rect x="{x:.1f}" y="{y:.1f}" width="{w:.1f}" height="{h}" rx="{h / 2}" fill="{fill}"/>')
-    svg.text(x + pad, y + h / 2 + size * 0.36, label, "bold", size, ink, spacing=0.4)
-    return w
+# ---- Hero: a glass phone with glass pills orbiting it over morphing Material shapes
+
+ORBIT = [("Android", "primary"), ("iOS", "sec"), ("Performance", "ter"), ("On-device ML", "yel"),
+         ("AR & spatial", "primary"), ("AI tooling", "sec")]
+HERO_ALT = ("Ankit Verma. Android and iOS engineer who owns apps end to end and keeps them fast and stable as they grow. "
+            "Orbiting: " + ", ".join(label for label, _ in ORBIT) + ".")
 
 
-# ---- Hero
-
-HERO_ALT = (
-    "Ankit Verma, mobile software engineer. Ships to Android and iOS. Currently learning Compose Multiplatform. "
-    "Favourite kind of bug: the crash that only shows up after you open the same screen again, and again, and again. "
-    "Based in India. Beyond mobile: AR and geospatial, on-device ML, tools for AI agents."
-)
+def pill_layer(svg, ell, p, dur, clip=None):
+    if clip:
+        svg.add(f'<g clip-path="url(#{clip})">')
+    for i, (label, accent) in enumerate(ORBIT):
+        tw = FONTS["bold"].width(label, 14) + 34
+        motion = f'<animateMotion dur="{dur}s" repeatCount="indefinite" begin="-{i * dur / len(ORBIT):.1f}s" path="{ell}"/>'
+        rect = f'x="{-tw / 2:.1f}" y="-18" width="{tw:.1f}" height="36" rx="18"'
+        cid = svg.uid("oc")
+        svg.defs.append(f'<clipPath id="{cid}"><rect {rect}>{motion}</rect></clipPath>')
+        svg.add(f'<g><rect x="{-tw / 2:.1f}" y="-14" width="{tw:.1f}" height="36" rx="18" fill="#000" opacity=".16" filter="url(#gshadow)"/>{motion}</g>')
+        svg.add(f'<g clip-path="url(#{cid})"><use href="#wallHero" filter="url(#frost)"/></g>')
+        svg.used["bold"].update(label)
+        svg.add(f'<g><rect {rect} fill="{p["tint"]}" opacity="{GLASS_TINT}"/><rect {rect} fill="url(#sheen)"/>'
+                f'<rect x="{-tw / 2 + .6:.1f}" y="-17.4" width="{tw - 1.2:.1f}" height="34.8" rx="17.4" fill="none" stroke="url(#rim)" stroke-width="1.3"/>'
+                f'<circle cx="{-tw / 2 + 16:.1f}" cy="0" r="4.5" fill="{p[accent]}"/>'
+                f'<text x="7" y="5" text-anchor="middle" font-family="bg-bold,{FALLBACK}" font-weight="700" font-size="14" '
+                f'fill="{p["glass_ink"]}">{escape(label)}</text>{motion}</g>')
+    if clip:
+        svg.add("</g>")
 
 
 def hero(p):
-    g = 12
-    top_h, side_h = 280, 134
-    row2_y, row2_h = top_h + g, 200
-    svg = Svg(W, row2_y + row2_h, HERO_ALT)
-
-    # Name
-    a = tile(svg, 0, 0, 516, top_h, p["pc"])
-    clipped(svg, a, lambda: shape(svg, 452, 236, 128, "cookie9", p["primary"], 0.2, morph=["flower", "squircle"], spin=60))
-    clipped(svg, a, lambda: shape(svg, 470, 52, 20, "cookie4", p["primary"], 0.55, spin=-18))
-    svg.text(32, 50, "Hi, I'm", "bold", 17, p["on_pc"], opacity=0.75)
-    svg.text(28, 132, "Ankit", "display", 92, p["on_pc"], spacing=-1.5, max_w=420)
-    svg.text(28, 214, "Verma", "display", 92, p["on_pc"], spacing=-1.5, max_w=420)
-    svg.text(32, 252, "Mobile software engineer", "bold", 19, p["on_pc"], opacity=0.85)
-
-    # Platforms
-    bx = 528
-    b = tile(svg, bx, 0, 312, side_h, p["sc"])
-    svg.text(bx + 24, 38, "Ships to", "bold", 15, p["on_sc"], opacity=0.75)
-    svg.text(bx + 24, 84, "Android & iOS", "display", 32, p["on_sc"], spacing=-0.5, max_w=230)
-    svg.text(bx + 24, 112, "Kotlin · Compose · Swift · SwiftUI", "text", 14, p["on_sc"], opacity=0.8, max_w=264)
-    for i, px in enumerate((bx + 254, bx + 280)):
-        svg.add(f'<rect x="{px}" y="16" width="22" height="40" rx="6" fill="none" stroke="{p["on_sc"]}" stroke-width="2"/>')
-        notch = (f'<circle cx="{px + 11}" cy="21" r="1.6" fill="{p["on_sc"]}"/>' if i == 0
-                 else f'<rect x="{px + 7}" y="19.5" width="8" height="3" rx="1.5" fill="{p["on_sc"]}"/>')
-        svg.add(notch)
-
-    # Now learning
-    c = tile(svg, bx, side_h + g, 312, side_h, p["tc"])
-    clipped(svg, c, lambda: shape(svg, bx + 290, side_h + g + 118, 46, "flower", p["ter"], 0.35, spin=30))
-    cy = side_h + g
-    svg.text(bx + 24, cy + 38, "Currently learning", "bold", 15, p["on_tc"], opacity=0.75)
-    svg.text(bx + 24, cy + 78, "Compose", "display", 30, p["on_tc"], spacing=-0.5, max_w=230)
-    svg.text(bx + 24, cy + 110, "Multiplatform", "display", 30, p["on_tc"], spacing=-0.5, max_w=230)
-
-    # Favourite bug
-    d = tile(svg, 0, row2_y, 300, row2_h, p["yc"])
-    svg.text(24, row2_y + 38, "Favourite kind of bug", "bold", 15, p["on_yc"], opacity=0.75)
-    quote = "The crash that only shows up after you open the same screen again, and again, and again."
-    for i, line in enumerate(wrap(quote, "bold", 19, 250)):
-        svg.text(24, row2_y + 74 + i * 25, line, "bold", 19, p["on_yc"], max_w=252)
-    svg.text(24, row2_y + row2_h - 22, "(it was a reference cycle)", "text", 14, p["on_yc"], opacity=0.7)
-    clipped(svg, d, lambda: shape(svg, 286, row2_y + row2_h - 8, 34, "clover", p["yel"], 0.3, spin=-24))
-
-    # Location
-    ex = 312
-    tile(svg, ex, row2_y, 240, row2_h, p["surface"])
-    svg.text(ex + 24, row2_y + 38, "Based in", "bold", 15, p["muted"])
-    shape(svg, ex + 186, row2_y + 62, 34, "cookie12", p["yel"], spin=40)
-    svg.text(ex + 22, row2_y + 156, "India", "display", 52, p["ink"], spacing=-1, max_w=196)
-    svg.text(ex + 24, row2_y + 180, "IST · UTC+5:30", "text", 14, p["muted"])
-
-    # Beyond mobile
-    fx = 564
-    f = tile(svg, fx, row2_y, 276, row2_h, p["primary"])
-    clipped(svg, f, lambda: shape(svg, fx + 262, row2_y + 16, 40, "squircle", p["on_primary"], 0.12, spin=50))
-    svg.text(fx + 24, row2_y + 38, "Beyond mobile", "bold", 15, p["on_primary"], opacity=0.8)
-    for i, line in enumerate(["AR & geospatial", "On-device ML", "Tools for AI agents"]):
-        svg.text(fx + 24, row2_y + 80 + i * 32, line, "display", 23, p["on_primary"], spacing=-0.3, max_w=228)
+    W, H, stage_h = 840, 610, 460
+    svg = Svg(W, H, HERO_ALT)
+    glass_defs(svg, p)
+    wallpaper(svg, "wallHero", 0, 0, W, stage_h, 36, p, seed=2)
+    cx, cy, rx, ry = W / 2, 228, 330, 112
+    ell = f"M{cx - rx} {cy} A{rx} {ry} 0 1 1 {cx + rx} {cy} A{rx} {ry} 0 1 1 {cx - rx} {cy}"
+    svg.add(f'<path d="{ell}" fill="none" stroke="#fff" stroke-opacity=".55" stroke-dasharray="3 7"/>')
+    dur = 30
+    # Drawn twice: the phone hides the far side of the orbit, and only the near (lower) half is redrawn on top.
+    pill_layer(svg, ell, p, dur)
+    pw, ph = 168, 320
+    glass(svg, cx - pw / 2, cy - ph / 2, pw, ph, 40, "wallHero", p)
+    shape(svg, cx, cy - 6, 50, "cookie9", p["primary"], morph=["flower", "squircle", "clover"], spin=40)
+    svg.text(cx, cy + 8, "AV", "display", 30, p["on_primary"], anchor="middle")
+    near = svg.uid("near")
+    svg.defs.append(f'<clipPath id="{near}"><rect x="0" y="{cy}" width="{W}" height="{stage_h - cy}"/></clipPath>')
+    pill_layer(svg, ell, p, dur, clip=near)
+    svg.text(cx, 532, "Ankit Verma", "display", 60, p["ink"], anchor="middle", spacing=-1.5)
+    svg.text(cx, 572, "Android & iOS engineer. I own apps end to end and keep them fast and stable.",
+             "text", 18, p["muted"], anchor="middle", max_w=W)
     return svg
 
 
-# ---- Section headings
+# ---- Spotlight cards (one image each, so each links to its project)
 
-SECTIONS = {
-    "bugs": ("Bug journal", "production problems I've tracked down", "cookie9", "primary"),
-    "built": ("Things I've built", "shipped, open-sourced, or just for fun", "flower", "sec"),
-    "toolbox": ("Toolbox", "what I reach for", "squircle", "ter"),
-    "hello": ("Say hi", "always happy to talk shop", "clover", "yel"),
-}
-
-
-def heading(p, key):
-    title, caption, shp, accent = SECTIONS[key]
-    svg = Svg(W, 64, title)
-    shape(svg, 20, 34, 18, shp, p[accent], spin=36)
-    svg.text(52, 45, title, "display", 32, p["ink"], spacing=-0.5)
-    svg.text(W, 44, caption, "text", 15, p["muted"], anchor="end")
-    return svg
-
-
-# ---- Bug journal
-
-BUGS = [
-    ("iOS · UIKit · Instruments",
-     "App ran out of memory after repeated trips through media-heavy forms",
-     "Strong reference cycles in table view cells kept every visited screen alive, and image loading held on to more than it needed.",
-     "Broke the cycles and corrected how images were loaded and released."),
-    ("Android · CameraX · TensorFlow Lite",
-     "Real-time camera scanning lost stability as the ML pipeline ran",
-     "Object lifecycles in the frame pipeline were too long, and each frame did intermediate work it didn't need.",
-     "Tightened lifecycles and removed the unnecessary computations."),
-    ("iOS · audio & video",
-     "Recorded media arrived corrupted, worst on flaky networks",
-     "Recording configuration and encoding didn't match, and uploads weren't handled safely under poor connectivity.",
-     "Corrected the recording setup, encoding and upload handling."),
-    ("iOS · server-driven UI",
-     "Editing one nested form quietly overwrote data in another",
-     "State updates weren't scoped, so a change in one subform leaked into other instances.",
-     "Isolated updates to the active subform."),
+SPOTS = [
+    ("miraro", "Miraro", "SHIPPED · PLAY STORE", "https://miraro.zettamask.com", 0,
+     "A privacy-first gallery I designed and shipped end to end. Hide and share the photos you choose without exposing the whole device."),
+    ("android-docs-mcp", "android-docs-mcp", "OPEN SOURCE · AI TOOLING", "https://github.com/ankit-verma-209171/android-docs-mcp", 3,
+     "Gives AI coding agents direct access to developer.android.com docs, API references and release notes. My most-starred repo."),
 ]
 
 
-def bug_card_layout(platform, title, cause, fix, w):
-    inner = w - 48
-    t_lines = wrap(title, "display", 21, inner)
-    c_lines = wrap(cause, "text", 15, inner)
-    f_lines = wrap(fix, "text", 15, inner)
-    h = 24 + 26 + 22 + len(t_lines) * 26 + 18 + 18 + len(c_lines) * 21 + 14 + 18 + len(f_lines) * 21 + 20
-    return t_lines, c_lines, f_lines, h
-
-
-def bug_journal(p):
-    cw, gap = (W - 12) / 2, 12
-    layouts = [bug_card_layout(*b, cw) for b in BUGS]
-    rows = [max(layouts[i][3], layouts[i + 1][3]) for i in range(0, len(BUGS), 2)]
-    total_h = sum(rows) + gap * (len(rows) - 1)
-    alt = "Bug journal. " + " ".join(f"{t}. Cause: {c} Fix: {f}" for _, t, c, f in BUGS)
-    svg = Svg(W, total_h, alt)
-    shapes = ["cookie4", "flower", "clover", "squircle"]
-    y = 0
-    for r, row_h in enumerate(rows):
-        for col in range(2):
-            i = r * 2 + col
-            platform = BUGS[i][0]
-            t_lines, c_lines, f_lines, _ = layouts[i]
-            fill, ink, accent = TONES[i % len(TONES)]
-            x = col * (cw + gap)
-            cid = tile(svg, x, y, cw, row_h, p["surface"], r=24)
-            clipped(svg, cid, lambda: shape(svg, x + cw - 14, y + 14, 30, shapes[i], p[accent], 0.9, spin=45 if i % 2 else -45))
-            chip(svg, x + 24, y + 24, platform, p[fill], p[ink])
-            ty = y + 24 + 26 + 30
-            for j, line in enumerate(t_lines):
-                svg.text(x + 24, ty + j * 26, line, "display", 21, p["ink"], spacing=-0.2)
-            cy = ty + (len(t_lines) - 1) * 26 + 34
-            svg.text(x + 24, cy, "CAUSE", "bold", 11, p[accent], spacing=1.6)
-            for j, line in enumerate(c_lines):
-                svg.text(x + 24, cy + 20 + j * 21, line, "text", 15, p["ink"], opacity=0.88)
-            fy = cy + 20 + (len(c_lines) - 1) * 21 + 32
-            svg.text(x + 24, fy, "FIX", "bold", 11, p[accent], spacing=1.6)
-            for j, line in enumerate(f_lines):
-                svg.text(x + 24, fy + 20 + j * 21, line, "text", 15, p["ink"], opacity=0.88)
-        y += row_h + gap
-    return svg
-
-
-# ---- Project cards (one image each, so each can link to its repo)
-
-PROJECTS = [
-    ("miraro", "Miraro", "Shipped · Play Store", "https://miraro.zettamask.com",
-     "A privacy-first gallery: hide and share the photos you choose, without handing over the whole device."),
-    ("android-docs-mcp", "android-docs-mcp", "AI agents · TypeScript", "https://github.com/ankit-verma-209171/android-docs-mcp",
-     "An MCP server that lets AI coding agents search developer.android.com docs, API references and release notes."),
-    ("ar-treasure-hunt", "AR Treasure Hunt", "AR R&D · Unity · ARCore", "https://github.com/SimformSolutionsPvtLtd/SS-ARTreasureHunt",
-     "Geospatial AR: 3D clues anchored to real-world coordinates with ARCore and AR Foundation. Open-sourced prototype."),
-    ("aniflow", "AniFlow", "Android · Compose", "https://github.com/ankit-verma-209171/AniFlow",
-     "Offline-first anime browser. Room cache, synced through Paging 3 RemoteMediator when the network is back."),
-    ("rust-interop", "RustInteropDemo", "Kotlin + Rust · JNI", "https://github.com/ankit-verma-209171/RustInteropDemo",
-     "Kotlin calls native Rust over JNI, with a live race to count to a billion: JVM vs Rust."),
-    ("process-death", "Process death, explained", "Android · state", "https://github.com/ankit-verma-209171/android-process-death-recovery-demo",
-     "remember, rememberSaveable, ViewModel and SavedStateHandle, put through rotation and process death."),
-]
-CARD_W = 414
-
-
-def project_cards(p):
-    inner = CARD_W - 48
-    descs = [wrap(d, "text", 15, inner) for *_, d in PROJECTS]
-    h = 24 + 28 + 26 + 34 + max(len(d) for d in descs) * 21 + 26
-    out = {}
-    shapes = ["cookie9", "flower", "clover", "squircle", "cookie4", "cookie12"]
-    for i, ((slug, name, tag, _, desc), lines) in enumerate(zip(PROJECTS, descs)):
-        fill, ink, accent = TONES[i % len(TONES)]
-        svg = Svg(CARD_W, h, f"{name}. {tag}. {desc}")
-        cid = tile(svg, 0, 0, CARD_W, h, p[fill])
-        clipped(svg, cid, lambda: shape(svg, CARD_W - 30, h - 20, 64, shapes[i], p[accent], 0.22, spin=60 if i % 2 else -60))
-        chip(svg, 24, 24, tag, p[ink], p[fill])
-        svg.add(f'<circle cx="{CARD_W - 40}" cy="40" r="17" fill="{p[ink]}"/>')
-        svg.add(
-            f'<path d="M{CARD_W - 45} 45 L{CARD_W - 35} 35 M{CARD_W - 42} 35 H{CARD_W - 35} V42" '
-            f'stroke="{p[fill]}" stroke-width="2.2" fill="none" stroke-linecap="round" stroke-linejoin="round"/>'
-        )
-        svg.text(24, 24 + 28 + 40, name, "display", 27, p[ink], spacing=-0.4, max_w=inner)
-        for j, line in enumerate(lines):
-            svg.text(24, 24 + 28 + 40 + 30 + j * 21, line, "text", 15, p[ink], opacity=0.85)
-        out[slug] = svg
-    return out
-
-
-# ---- Toolbox
-
-TOOLBOX = [
-    ("Build", ["Kotlin", "Jetpack Compose", "Compose Multiplatform", "Coroutines & Flow", "Hilt", "Room", "Swift", "SwiftUI", "UIKit"]),
-    ("See & sense", ["CameraX", "TensorFlow Lite", "ARKit", "RealityKit", "RoomPlan", "ARCore Geospatial", "AR Foundation"]),
-    ("Debug & ship", ["Instruments", "Memory profiling", "WorkManager", "Firebase", "CI/CD", "Play Store", "App Store"]),
-    ("Tinker", ["TypeScript", "Python", "Rust", "Go", "C", "MCP servers"]),
-]
-
-
-def toolbox(p):
-    cw, gap = (W - 12) / 2, 12
-    layouts = []
-    for title, items in TOOLBOX:
-        rows, cur, x = [], [], 0
-        for item in items:
-            w = FONTS["bold"].width(item, 13, 0.3) + 28
-            if cur and x + w > cw - 48:
-                rows.append(cur)
-                cur, x = [], 0
-            cur.append(item)
-            x += w + 8
-        rows.append(cur)
-        layouts.append(rows)
-    heights = [24 + 30 + 18 + len(r) * 38 + 14 for r in layouts]
-    row_hs = [max(heights[0], heights[1]), max(heights[2], heights[3])]
-    alt = "Toolbox. " + " ".join(f"{t}: {', '.join(items)}." for t, items in TOOLBOX)
-    svg = Svg(W, sum(row_hs) + gap, alt)
-    y = 0
-    for r, row_h in enumerate(row_hs):
-        for col in range(2):
-            i = r * 2 + col
-            fill, ink, accent = TONES[i]
-            x = col * (cw + gap)
-            tile(svg, x, y, cw, row_h, p["surface"], r=24)
-            shape(svg, x + 36, y + 42, 12, ["cookie9", "flower", "squircle", "clover"][i], p[accent])
-            svg.text(x + 56, y + 50, TOOLBOX[i][0], "display", 23, p["ink"], spacing=-0.3)
-            cy = y + 24 + 30 + 18
-            for row in layouts[i]:
-                cx = x + 24
-                for item in row:
-                    cx += chip(svg, cx, cy, item, p[fill], p[ink], size=13, pad=14, h=30) + 8
-                cy += 38
-        y += row_h + gap
-    return svg
-
-
-# ---- Contact pills and footer
-
-CONTACTS = [
-    ("linkedin", "LinkedIn", "https://www.linkedin.com/in/ankit-verma-209171/", 0),
-    ("leetcode", "LeetCode", "https://leetcode.com/u/ankit-verma-209171/", 2),
-    ("email", "Email me", "mailto:ankitverma209171@gmail.com", 1),
-]
-
-
-def contact_pill(p, label, tone):
-    fill, ink, accent = TONES[tone]
-    tw = FONTS["bold"].width(label, 17)
-    w, h = tw + 96, 56
-    svg = Svg(w, h, label)
-    svg.add(f'<rect width="{w:.1f}" height="{h}" rx="{h / 2}" fill="{p[fill]}"/>')
-    shape(svg, 30, 28, 11, "cookie9", p[accent], spin=20)
-    svg.text(50, 34, label, "bold", 17, p[ink])
-    ax = 50 + tw + 14
-    svg.add(
-        f'<path d="M{ax:.1f} 34 L{ax + 10:.1f} 24 M{ax + 3:.1f} 24 H{ax + 10:.1f} V31" stroke="{p[ink]}" '
-        f'stroke-width="2.2" fill="none" stroke-linecap="round" stroke-linejoin="round"/>'
-    )
-    return svg
-
-
-def footer(p):
-    svg = Svg(W, 110, "Thanks for stopping by.")
-    names = ["cookie9", "flower", "squircle", "clover", "cookie4"]
-    accents = ["primary", "sec", "ter", "yel", "primary"]
-    for i, (n, a) in enumerate(zip(names, accents)):
-        nxt = [names[(i + 1) % 5], names[(i + 2) % 5]]
-        shape(svg, W / 2 - 96 + i * 48, 32, 15, n, p[a], morph=nxt)
-    svg.text(W / 2, 92, "Thanks for stopping by.", "bold", 17, p["muted"], anchor="middle")
+def spot(p, name, tag, desc, seed):
+    W, H = 414, 210
+    svg = Svg(W, H, f"{name}. {tag}. {desc}")
+    glass_defs(svg, p)
+    wallpaper(svg, "wallSpot", 0, 0, W, H, 28, p, seed)
+    glass(svg, 12, 12, W - 24, H - 24, 22, "wallSpot", p, frost=p["card_frost"])
+    ink = p["glass_ink"]
+    svg.text(32, 44, tag, "bold", 11, ink, spacing=1.4, opacity=0.75)
+    svg.text(32, 82, name, "display", 28, ink, spacing=-0.5, max_w=320)
+    lines = wrap(desc, "text", 14.5, W - 64)
+    if len(lines) > 4:
+        raise ValueError(f"{name}: description needs {len(lines)} lines, the card fits 4")
+    for i, line in enumerate(lines):
+        svg.text(32, 110 + i * 20, line, "text", 14.5, ink, opacity=0.9)
+    arrow_ink = "#1C1B22" if ink == "#FFFFFF" else "#FFFFFF"
+    svg.add(f'<circle cx="{W - 46}" cy="44" r="16" fill="{ink}" opacity=".9"/>'
+            f'<path d="M{W - 51} 49 L{W - 41} 39 M{W - 48} 39 H{W - 41} V46" stroke="{arrow_ink}" '
+            f'stroke-width="2.2" fill="none" stroke-linecap="round" stroke-linejoin="round"/>')
     return svg
 
 
 # ---- README
 
-INTRO = (
-    "I build mobile apps that don't just work, but keep working well as they grow. Most days that means Kotlin and "
-    "Jetpack Compose; other days it's Swift in a production iOS codebase, an AR prototype, or a tool that helps AI "
-    "agents read the Android docs. I like owning features end to end, and I like the bugs most people would rather not touch."
-)
-
-
-def picture(name, alt, width=None, href=None):
-    w = f' width="{width}"' if width else ""
-    img = (
-        f'<picture><source media="(prefers-color-scheme: dark)" srcset="assets/{name}-dark.svg">'
-        f'<img src="assets/{name}-light.svg" alt="{escape(alt)}"{w}></picture>'
-    )
+def picture(name, alt, width="100%", href=None):
+    img = (f'<picture><source media="(prefers-color-scheme: dark)" srcset="assets/{name}-dark.svg">'
+           f'<img src="assets/{name}-light.svg" alt="{escape(alt)}" width="{width}"></picture>')
     return f'<a href="{href}">{img}</a>' if href else img
 
 
-def readme():
-    h = lambda k: picture(f"heading-{k}", SECTIONS[k][0], "100%")
-    cards = [picture(f"project-{slug}", f"{name}: {desc}", "49%", url) for slug, name, _, url, desc in PROJECTS]
-    projects = "\n</p>\n<p>\n".join("\n".join(cards[i:i + 2]) for i in range(0, len(cards), 2))
-    contacts = "\n".join(picture(f"contact-{slug}", label, None, url) for slug, label, url, _ in CONTACTS)
-    return f"""<!-- Generated by scripts/build_profile.py. Edit the script, then run it. -->
+README = """<!-- Generated by scripts/build_profile.py. Edit the script, then run it. -->
 
-{picture("hero", HERO_ALT, "100%")}
+@HERO@
 
-{INTRO}
+**I'm a mobile engineer who ships on both Android and iOS, and I do my best work where an app has to hold up in the real world:** on slow networks, through long sessions, and as features pile up. I've been doing this at [Simform](https://www.simform.com/) since 2023, where I now own a production Android codebase end to end.
 
-{h("bugs")}
+### What I bring to a team
 
-{picture("bugs", "Bug journal: " + " ".join(f"{t}." for _, t, _, _ in BUGS), "100%")}
+- **Ownership of a whole app.** I own a production Android codebase end to end, both maintenance and new features, and I'm the person the team comes to when something is stuck.
+- **Zero to MVP, fast.** I built a health-scanning Android app from scratch in two months: Jetpack Compose, real-time camera scanning with CameraX, and on-device ML with TensorFlow Lite. On another product, I was part of a 30-day push that took an MVP to the Play Store on deadline.
+- **The migrations and clean-ups nobody wants.** As the solo developer, I brought a legacy Android app up to Android 15 and 16 KB page sizes, resolving 500+ issues. On another app, I fixed 70+ issues in two months to bring it level with its iOS version.
+- **One engineer, both platforms.** Kotlin and Compose day to day, plus production iOS work in Swift, SwiftUI and UIKit, including migrating complex UIKit table and collection screens to SwiftUI.
+- **Quality you can measure.** I introduced unit testing on a production app: wrote 500+ tests, updated 800+, and added them to the PR pipeline, so large upgrades no longer broke things unnoticed. In my own app, Baseline Profiles cut startup from about 1 s to 0.4 s.
+- **A multiplier for the team.** I get Product, Design, Backend and iOS aligned on missing user journeys and edge cases before development starts, so there's less rework. I'm mentoring a new teammate, and I've run sessions on AI-assisted engineering, AI on iOS, and AR on Android.
 
-{h("built")}
+### Proof: bugs I've tracked down
+
+<details open>
+<summary><b>An iOS app crashed and lost data</b> when users switched between several forms</summary>
+
+- **Cause:** strong reference cycles in table view cells kept every visited form alive in memory, and image loading held on to more than it needed.
+- **Fix:** broke the cycles and corrected how images load and release, found with Xcode Instruments. The crash and the data loss it caused stopped.
+
+</details>
+
+<details>
+<summary><b>Video uploads arrived truncated or corrupted</b> on poor networks (iOS)</summary>
+
+- **Cause:** recording configuration and encoding didn't match, and uploads weren't handled safely when the connection dropped.
+- **Fix:** corrected the recording setup, encoding and upload handling, so media arrives intact on bad connections.
+
+</details>
+
+<details>
+<summary><b>Real-time camera scanning lost stability</b> while the on-device ML pipeline ran (Android)</summary>
+
+- **Cause:** objects in the CameraX + TensorFlow Lite frame pipeline lived too long, and each frame did work it didn't need.
+- **Fix:** tightened object lifecycles and removed the unnecessary computation, so scanning stayed stable in real time.
+
+</details>
+
+<details>
+<summary><b>Linked dropdowns swapped their values</b> inside nested, server-driven forms (iOS)</summary>
+
+- **Cause:** the way the form fields were generated let state from one subform leak into another.
+- **Fix:** isolated updates to the active subform, so each dropdown keeps its own value.
+
+</details>
+
+<details>
+<summary><b>App Links stopped verifying</b> during a domain migration (Android)</summary>
+
+- **Cause:** the move to a new domain broke Android's App Links verification, so links stopped opening in the app.
+- **Fix:** traced it to the root cause, documented it, and worked with the relevant teams to put the fix in place.
+
+</details>
+
+<details>
+<summary><b>Deferred deep links worked on one phone but not another</b> (Android)</summary>
+
+- **Cause:** the device and the app interpreted the user agent differently.
+- **Fix:** tracked the mismatch down together with the backend team.
+
+</details>
+
+### Shipped and open source
 
 <p>
-{projects}
+@SPOTS@
 </p>
 
-{h("toolbox")}
+| Project | What it shows |
+| :--- | :--- |
+| [**AR Treasure Hunt**](https://github.com/SimformSolutionsPvtLtd/SS-ARTreasureHunt) | Geospatial AR: 3D content anchored to real-world coordinates with ARCore and AR Foundation |
+| [**ScribbleDash**](https://github.com/ankit-verma-209171/scribble-dash) | One codebase on Android and iOS: a sketching game in Compose Multiplatform |
+| [**AniFlow**](https://github.com/ankit-verma-209171/AniFlow) | Offline-first architecture: Room cache synced through Paging 3 `RemoteMediator` |
+| [**RustInteropDemo**](https://github.com/ankit-verma-209171/RustInteropDemo) | Native performance on Android: Kotlin calling Rust over JNI, raced against the JVM |
+| [**Process death, explained**](https://github.com/ankit-verma-209171/android-process-death-recovery-demo) | State that survives: `remember` vs `rememberSaveable` vs `ViewModel` vs `SavedStateHandle` |
 
-{picture("toolbox", "Toolbox: " + "; ".join(f"{t}: {', '.join(i)}" for t, i in TOOLBOX), "100%")}
+### Let's talk
 
-{h("hello")}
-
-<p>
-{contacts}
-</p>
-
-{picture("footer", "Thanks for stopping by.", "100%")}
+If your app needs to ship on both platforms and stay solid as it grows, I'd like to hear about it.
+[LinkedIn](https://www.linkedin.com/in/ankit-verma-209171/) · [Email](mailto:ankitverma209171@gmail.com) · [LeetCode](https://leetcode.com/u/ankit-verma-209171/)
 """
 
 
@@ -552,13 +406,12 @@ def main():
     for old in ASSETS.glob("*.svg"):
         old.unlink()
     for theme, p in THEMES.items():
-        files = {"hero": hero(p), "bugs": bug_journal(p), "toolbox": toolbox(p), "footer": footer(p)}
-        files.update({f"heading-{k}": heading(p, k) for k in SECTIONS})
-        files.update({f"project-{k}": v for k, v in project_cards(p).items()})
-        files.update({f"contact-{slug}": contact_pill(p, label, tone) for slug, label, _, tone in CONTACTS})
-        for name, svg in files.items():
-            (ASSETS / f"{name}-{theme}.svg").write_text(svg.render(), encoding="utf-8")
-    (ROOT / "README.md").write_text(readme(), encoding="utf-8")
+        (ASSETS / f"hero-{theme}.svg").write_text(hero(p).render(), encoding="utf-8")
+        for slug, name, tag, _, seed, desc in SPOTS:
+            (ASSETS / f"spot-{slug}-{theme}.svg").write_text(spot(p, name, tag, desc, seed).render(), encoding="utf-8")
+    spots = "\n".join(picture(f"spot-{slug}", f"{name}: {desc}", "49%", url) for slug, name, _, url, _, desc in SPOTS)
+    readme = README.replace("@HERO@", picture("hero", HERO_ALT)).replace("@SPOTS@", spots)
+    (ROOT / "README.md").write_text(readme, encoding="utf-8")
 
 
 if __name__ == "__main__":
