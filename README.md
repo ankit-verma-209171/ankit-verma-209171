@@ -2,11 +2,11 @@
 
 <picture><source media="(prefers-color-scheme: dark)" srcset="assets/hero-dark.svg"><img src="assets/hero-light.svg" alt="Ankit Verma. Android and iOS engineer who owns apps end to end and keeps them fast and stable as they grow. Orbiting: Android, iOS, Performance, On-device ML, AR &amp; spatial, AI tooling." width="100%"></picture>
 
-**I'm a mobile engineer who ships on both Android and iOS, and I do my best work where an app has to hold up in the real world:** on slow networks, through long sessions, and as features pile up. I've been doing this at [Simform](https://www.simform.com/) since 2023.
+**I build Android and iOS apps that keep working after launch:** on flaky networks, through long sessions, and as new features pile up. I've been doing this at [Simform](https://www.simform.com/) since 2023.
 
 ### What I bring to a team
 
-- **Ownership of a whole app.** I own a production Android codebase end to end, keeping it healthy while shipping what's next, and I'm the person the team comes to when something is stuck.
+- **Ownership of a whole app.** When a teammate left, I stepped up to own a production Android codebase on a two-person team, handling both maintenance and new features. Teammates come to me when they're stuck on something technical.
 - **Zero to MVP, fast.** I built a health-scanning Android app from scratch in two months: Jetpack Compose, real-time camera scanning with CameraX, and on-device ML with TensorFlow Lite. On another product, I was part of a 30-day push that took an MVP to the Play Store on deadline.
 - **The migrations and clean-ups nobody wants.** As the solo developer, I brought a legacy Android app up to Android 15 and 16 KB page sizes, resolving 500+ issues. On another app, I fixed 70+ issues in two months to bring it level with its iOS version.
 - **One engineer, both platforms.** Kotlin and Compose day to day, plus production iOS work in Swift, SwiftUI and UIKit, including migrating complex UIKit table and collection screens to SwiftUI.
